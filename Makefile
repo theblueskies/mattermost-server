@@ -1,4 +1,4 @@
-.PHONY: build package run stop run-client run-server stop-client stop-server restart restart-server restart-client start-docker clean-dist clean nuke check-style check-client-style check-server-style check-unit-tests test dist setup-mac prepare-enteprise run-client-tests setup-run-client-tests cleanup-run-client-tests test-client build-linux build-osx build-windows internal-test-web-client vet run-server-for-web-client-tests
+.PHONY: build package run stop restart start-docker clean-dist clean nuke check-style check-unit-tests test test-race dist setup-mac prepare-enteprise build-linux build-osx build-windows internal-test-web-client vet run-server-for-web-client-tests
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -29,18 +29,6 @@ else
 	BUILD_TYPE_NAME = team
 endif
 BUILD_WEBAPP_DIR ?= ../mattermost-webapp
-BUILD_CLIENT = false
-BUILD_HASH_CLIENT = independant
-ifneq ($(wildcard $(BUILD_WEBAPP_DIR)/.),)
-	ifeq ($(BUILD_CLIENT),true)
-		BUILD_CLIENT = true
-		BUILD_HASH_CLIENT = $(shell cd $(BUILD_WEBAPP_DIR) && git rev-parse HEAD)
-	else
-		BUILD_CLIENT = false
-	endif
-else
-	BUILD_CLIENT = false
-endif
 
 # Golang Flags
 GOPATH ?= $(GOPATH:):./vendor
@@ -310,7 +298,7 @@ ifeq ($(BUILD_ENTERPRISE_READY),true)
 	rm -f config/*.key
 endif
 
-test-server-race: test-te-race test-ee-race
+test-race: test-te-race test-ee-race
 
 do-cover-file:
 	@echo "mode: count" > cover.out
@@ -334,7 +322,7 @@ ifeq ($(BUILD_ENTERPRISE_READY),true)
 	rm -f config/*.key
 endif
 
-test-server: test-te test-ee
+test: test-te test-ee
 
 internal-test-web-client:
 	$(GO) run $(GOFLAGS) $(PLATFORM_FILES) test web_client_tests
@@ -342,20 +330,13 @@ internal-test-web-client:
 run-server-for-web-client-tests:
 	$(GO) run $(GOFLAGS) $(PLATFORM_FILES) test web_client_tests_server
 
-test-client:
-	@echo Running client tests
-
-	cd $(BUILD_WEBAPP_DIR) && $(MAKE) test
-
-test: test-server test-client
-
 cover:
 	@echo Opening coverage info in browser. If this failed run make test first
 
 	$(GO) tool cover -html=cover.out
 	$(GO) tool cover -html=ecover.out
 
-run-server: start-docker
+run: start-docker
 	@echo Running mattermost for development
 
 	mkdir -p $(BUILD_WEBAPP_DIR)/dist/files
@@ -367,22 +348,7 @@ run-cli: start-docker
 
 	$(GO) run $(GOFLAGS) $(GO_LINKER_FLAGS) $(PLATFORM_FILES) ${ARGS}
 
-run-client:
-	@echo Running mattermost client for development
-
-	ln -nfs $(BUILD_WEBAPP_DIR)/dist client
-	cd $(BUILD_WEBAPP_DIR) && $(MAKE) run
-
-run-client-fullmap:
-	@echo Running mattermost client for development with FULL SOURCE MAP
-
-	cd $(BUILD_WEBAPP_DIR) && $(MAKE) run-fullmap
-
-run: run-server run-client
-
-run-fullmap: run-server run-client-fullmap
-
-stop-server:
+stop:
 	@echo Stopping mattermost
 
 ifeq ($(BUILDER_GOOS_GOARCH),"windows_amd64")
@@ -399,18 +365,7 @@ else
 	done
 endif
 
-stop-client:
-	@echo Stopping mattermost client
-
-	cd $(BUILD_WEBAPP_DIR) && $(MAKE) stop
-
-stop: stop-server stop-client
-
-restart: restart-server restart-client
-
-restart-server: | stop-server run-server
-
-restart-client: | stop-client run-client
+restart: | stop run
 
 run-job-server:
 	@echo Running job server for development
@@ -440,8 +395,6 @@ clean: stop-docker
 
 	rm -Rf $(DIST_ROOT)
 	go clean $(GOFLAGS) -i ./...
-
-	cd $(BUILD_WEBAPP_DIR) && $(MAKE) clean
 
 	find . -type d -name data | xargs rm -r
 	rm -rf logs
