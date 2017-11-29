@@ -20,9 +20,8 @@ func NewSqlPluginStore(sqlStore SqlStore) store.PluginStore {
 	s := &SqlPluginStore{sqlStore}
 
 	for _, db := range sqlStore.GetAllConns() {
-		table := db.AddTableWithName(model.PluginKeyValue{}, "PluginKeyValueStore").SetKeys(false, "PluginId", "Key")
-		table.ColMap("PluginId").SetMaxSize(100)
-		table.ColMap("Key").SetMaxSize(100)
+		table := db.AddTableWithName(model.PluginKeyValue{}, "PluginKeyValueStore").SetKeys(false, "Key")
+		table.ColMap("Key").SetMaxSize(128)
 		table.ColMap("Value").SetMaxSize(8192)
 	}
 
@@ -50,14 +49,14 @@ func (ps SqlPluginStore) SaveOrUpdate(kv *model.PluginKeyValue) store.StoreChann
 					// If the error is from unique constraints violation, it's the result of a
 					// valid race and we can report success. Otherwise we have a real error and
 					// need to return it
-					if !IsUniqueConstraintError(err, []string{"PRIMARY", "PluginId", "Key", "PKey"}) {
+					if !IsUniqueConstraintError(err, []string{"PRIMARY", "Key", "PKey"}) {
 						result.Err = model.NewAppError("SqlPluginStore.SaveOrUpdate", "store.sql_plugin_store.save.app_error", nil, err.Error(), http.StatusInternalServerError)
 						return
 					}
 				}
 			}
 		} else if ps.DriverName() == model.DATABASE_DRIVER_MYSQL {
-			if _, err := ps.GetMaster().Exec("INSERT INTO PluginKeyValueStore (PluginId, PKey, PValue) VALUES(:PluginId, :Key, :Value) ON DUPLICATE KEY UPDATE PValue = :Value", map[string]interface{}{"PluginId": kv.PluginId, "Key": kv.Key, "Value": kv.Value}); err != nil {
+			if _, err := ps.GetMaster().Exec("INSERT INTO PluginKeyValueStore (PKey, PValue) VALUES(:Key, :Value) ON DUPLICATE KEY UPDATE PValue = :Value", map[string]interface{}{"Key": kv.Key, "Value": kv.Value}); err != nil {
 				result.Err = model.NewAppError("SqlPluginStore.SaveOrUpdate", "store.sql_plugin_store.save.app_error", nil, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -67,15 +66,15 @@ func (ps SqlPluginStore) SaveOrUpdate(kv *model.PluginKeyValue) store.StoreChann
 	})
 }
 
-func (ps SqlPluginStore) Get(pluginId, key string) store.StoreChannel {
+func (ps SqlPluginStore) Get(key string) store.StoreChannel {
 	return store.Do(func(result *store.StoreResult) {
 		var kv *model.PluginKeyValue
 
-		if err := ps.GetReplica().SelectOne(&kv, "SELECT * FROM PluginKeyValueStore WHERE PluginId = :PluginId AND PKey = :Key", map[string]interface{}{"PluginId": pluginId, "Key": key}); err != nil {
+		if err := ps.GetReplica().SelectOne(&kv, "SELECT * FROM PluginKeyValueStore WHERE PKey = :Key", map[string]interface{}{"Key": key}); err != nil {
 			if err == sql.ErrNoRows {
-				result.Err = model.NewAppError("SqlPluginStore.Get", "store.sql_plugin_store.get.app_error", nil, fmt.Sprintf("plugin_id=%v, key=%v, err=%v", pluginId, key, err.Error()), http.StatusNotFound)
+				result.Err = model.NewAppError("SqlPluginStore.Get", "store.sql_plugin_store.get.app_error", nil, fmt.Sprintf("key=%v, err=%v", key, err.Error()), http.StatusNotFound)
 			} else {
-				result.Err = model.NewAppError("SqlPluginStore.Get", "store.sql_plugin_store.get.app_error", nil, fmt.Sprintf("plugin_id=%v, key=%v, err=%v", pluginId, key, err.Error()), http.StatusInternalServerError)
+				result.Err = model.NewAppError("SqlPluginStore.Get", "store.sql_plugin_store.get.app_error", nil, fmt.Sprintf("key=%v, err=%v", key, err.Error()), http.StatusInternalServerError)
 			}
 		} else {
 			result.Data = kv
@@ -83,10 +82,10 @@ func (ps SqlPluginStore) Get(pluginId, key string) store.StoreChannel {
 	})
 }
 
-func (ps SqlPluginStore) Delete(pluginId, key string) store.StoreChannel {
+func (ps SqlPluginStore) Delete(key string) store.StoreChannel {
 	return store.Do(func(result *store.StoreResult) {
-		if _, err := ps.GetMaster().Exec("DELETE FROM PluginKeyValueStore WHERE PluginId = :PluginId AND PKey = :Key", map[string]interface{}{"PluginId": pluginId, "Key": key}); err != nil {
-			result.Err = model.NewAppError("SqlPluginStore.Delete", "store.sql_plugin_store.delete.app_error", nil, fmt.Sprintf("plugin_id=%v, key=%v, err=%v", pluginId, key, err.Error()), http.StatusInternalServerError)
+		if _, err := ps.GetMaster().Exec("DELETE FROM PluginKeyValueStore WHERE PKey = :Key", map[string]interface{}{"Key": key}); err != nil {
+			result.Err = model.NewAppError("SqlPluginStore.Delete", "store.sql_plugin_store.delete.app_error", nil, fmt.Sprintf("key=%v, err=%v", key, err.Error()), http.StatusInternalServerError)
 		} else {
 			result.Data = true
 		}

@@ -28,8 +28,6 @@ func TestPluginKeyValueStore(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, ret)
 
-	assert.Nil(t, th.App.DeletePluginKey(pluginId, "stringkey"))
-	assert.Nil(t, th.App.DeletePluginKey(pluginId, "intkey"))
-	assert.Nil(t, th.App.DeletePluginKey(pluginId, "postkey"))
-	assert.Nil(t, th.App.DeletePluginKey(pluginId, "notrealkey"))
+	assert.Nil(t, th.App.DeletePluginKey(pluginId, "key"))
+	assert.Nil(t, th.App.DeletePluginKey(pluginId, "notakey"))
 }

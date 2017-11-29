@@ -3555,8 +3555,12 @@
     "translation": "[{{ .SiteName }}] Notification in {{ .TeamName}} on {{.Month}} {{.Day}}, {{.Year}}"
   },
   {
-    "id": "app.plugin.key_value.set.app_error",
-    "translation": "Unable to set key value. See detailed error for more information."
+    "id": "app.plugin.key_value.plugin_id.app_error",
+    "translation": "Plugin id must be more than 0 characters"
+  },
+  {
+    "id": "app.plugin.key_value.key.app_error",
+    "translation": "Key must be more than 0 characters"
   },
   {
     "id": "app.plugin.activate.app_error",
@@ -4245,10 +4249,6 @@
   {
     "id": "mattermost.working_dir",
     "translation": "Current working directory is %v"
-  },
-  {
-    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
-    "translation": "Invalid plugin ID, must be more than {{.Min}} and a of maximum {{.Max}} characters long."
   },
   {
     "id": "model.plugin_key_value.is_valid.key.app_error",

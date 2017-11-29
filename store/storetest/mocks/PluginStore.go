@@ -13,13 +13,13 @@ type PluginStore struct {
 	mock.Mock
 }
 
-// Delete provides a mock function with given fields: pluginId, key
-func (_m *PluginStore) Delete(pluginId string, key string) store.StoreChannel {
-	ret := _m.Called(pluginId, key)
+// Delete provides a mock function with given fields: key
+func (_m *PluginStore) Delete(key string) store.StoreChannel {
+	ret := _m.Called(key)
 
 	var r0 store.StoreChannel
-	if rf, ok := ret.Get(0).(func(string, string) store.StoreChannel); ok {
-		r0 = rf(pluginId, key)
+	if rf, ok := ret.Get(0).(func(string) store.StoreChannel); ok {
+		r0 = rf(key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.StoreChannel)
@@ -29,13 +29,13 @@ func (_m *PluginStore) Delete(pluginId string, key string) store.StoreChannel {
 	return r0
 }
 
-// Get provides a mock function with given fields: pluginId, key
-func (_m *PluginStore) Get(pluginId string, key string) store.StoreChannel {
-	ret := _m.Called(pluginId, key)
+// Get provides a mock function with given fields: key
+func (_m *PluginStore) Get(key string) store.StoreChannel {
+	ret := _m.Called(key)
 
 	var r0 store.StoreChannel
-	if rf, ok := ret.Get(0).(func(string, string) store.StoreChannel); ok {
-		r0 = rf(pluginId, key)
+	if rf, ok := ret.Get(0).(func(string) store.StoreChannel); ok {
+		r0 = rf(key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.StoreChannel)

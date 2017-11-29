@@ -5,6 +5,8 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -429,11 +431,29 @@ func (a *App) ShutDownPlugins() {
 	a.PluginEnv = nil
 }
 
+func getKeyHash(pluginId, key string) (string, *model.AppError) {
+	if len(pluginId) == 0 {
+		return "", model.NewAppError("getKeyHash", "app.plugin.key_value.plugin_id.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	if len(key) == 0 {
+		return "", model.NewAppError("getKeyHash", "app.plugin.key_value.key.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	hash := fnv.New128a()
+	hash.Write([]byte(pluginId + key))
+	return base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
+}
+
 func (a *App) SetPluginKey(pluginId string, key string, value []byte) *model.AppError {
+	hash, err := getKeyHash(pluginId, key)
+	if err != nil {
+		return err
+	}
+
 	kv := &model.PluginKeyValue{
-		PluginId: pluginId,
-		Key:      key,
-		Value:    value,
+		Key:   hash,
+		Value: value,
 	}
 
 	result := <-a.Srv.Store.Plugin().SaveOrUpdate(kv)
@@ -446,7 +466,12 @@ func (a *App) SetPluginKey(pluginId string, key string, value []byte) *model.App
 }
 
 func (a *App) GetPluginKey(pluginId string, key string) ([]byte, *model.AppError) {
-	result := <-a.Srv.Store.Plugin().Get(pluginId, key)
+	hash, err := getKeyHash(pluginId, key)
+	if err != nil {
+		return nil, err
+	}
+
+	result := <-a.Srv.Store.Plugin().Get(hash)
 
 	if result.Err != nil {
 		if result.Err.StatusCode == http.StatusNotFound {
@@ -462,7 +487,12 @@ func (a *App) GetPluginKey(pluginId string, key string) ([]byte, *model.AppError
 }
 
 func (a *App) DeletePluginKey(pluginId string, key string) *model.AppError {
-	result := <-a.Srv.Store.Plugin().Delete(pluginId, key)
+	hash, err := getKeyHash(pluginId, key)
+	if err != nil {
+		return err
+	}
+
+	result := <-a.Srv.Store.Plugin().Delete(hash)
 
 	if result.Err != nil {
 		l4g.Error(result.Err.Error())
